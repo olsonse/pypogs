@@ -30,7 +30,6 @@ import logging
 from time import sleep, time as timestamp
 from datetime import datetime
 from threading import Thread, Event
-import pythoncom
 from struct import pack as pack_data
 from enum import Enum
 
@@ -638,6 +637,7 @@ class Mount:
                 except:
                     pass
             self._is_init = False
+            import pythoncom
             pythoncom.CoUninitialize()
             self._ascom_telescope = None
             self._logger.info('Mount deinitialised')
@@ -749,7 +749,9 @@ class Mount:
                 self._control_thread_stop = False
                 success = [False]
                 def _loop_slew_to(alt, azi, success):
-                    if self.model.lower() == 'ascom':  pythoncom.CoInitialize()
+                    if self.model.lower() == 'ascom':
+                      import pythoncom
+                      pythoncom.CoInitialize()
                     while not self._control_thread_stop:
                         curr_pos = self.get_alt_az()
                         # Get current position error
