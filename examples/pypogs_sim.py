@@ -9,9 +9,15 @@ import sys, pathlib
 sys.path.append('..')
 import pypogs
 
+TOP_DIR = Path(__file__).parent.parent
+
 # ClEAR LOGS:
-open('../pypogs/debug/pypogs.txt', 'w').close()
-open('../pypogs/debug/gui.txt', 'w').close()
+pypogs_txt = Path(TOP_DIR, 'pypogs', 'debug', 'pypogs.txt')
+gui_txt = Path(TOP_DIR, 'pypogs', 'debug', 'gui.txt')
+if pypogs_txt.exists():
+  pypogs_txt.open('w').close()
+if gui_txt.exists():
+  gui_txt.open('w').close()
 
 # INITIALIZE PYPOGS SYSTEM:
 sys = pypogs.System()
