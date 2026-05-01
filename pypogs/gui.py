@@ -422,7 +422,7 @@ class TrackingControlFrame(ttk.Frame):
 #        self.update()
 
     def start_tracking_callback(self):
-        if self.sys.mount is not None and self.sys.mount.is_init and self.sys.mount._is_sidereal_tracking:
+        if self.sys.mount is not None and self.sys.mount.is_init and self.sys.mount.is_sidereal_tracking:
             self.logger.debug('Sidereal tracking is on.  Will turn off.')
             self.sys.mount.stop_sidereal_tracking()
         try:
@@ -2034,7 +2034,7 @@ class MountControlFrame(ttk.Frame):
         self.logger.debug('MountControlFrame got update request')
         
         if self.sys.mount is not None and self.sys.mount.is_init:
-            if self.sys.mount._is_sidereal_tracking:
+            if self.sys.mount.is_sidereal_tracking:
                 ttk.Style().configure('sidereal.TButton', background='green', foreground='green')
                 self.sidereal_button['text'] = 'Stop sidereal tracking'
                 #self.sys.mount.get_alt_az()
@@ -2113,7 +2113,7 @@ class MountControlFrame(ttk.Frame):
 
     def toggle_sidereal_tracking(self):
         self.logger.debug('Sidereal tracking button clicked')
-        if self.sys.mount._is_sidereal_tracking:
+        if self.sys.mount.is_sidereal_tracking:
             self.logger.debug('Sidereal tracking is on.  Will turn off.')            
             self.sys.mount.stop_sidereal_tracking()
         else:

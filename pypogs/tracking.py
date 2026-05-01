@@ -788,9 +788,7 @@ class ControlLoopThread:
             self._log_info('No end time (tracking indefinitely)')
         else:
             self._log_info('Track end time (UTC): ' + str(end_time))
-        if self._parent.mount.model == 'ASCOM':
-          import pythoncom
-          pythoncom.CoInitialize()
+        self._parent.mount.prep_thread()
         # Create logfile
         data_filename = Path(start_time.strftime('%Y-%m-%dT%H%M%S') + '_ControlLoopThread.csv')
         data_file = self.data_folder / data_filename

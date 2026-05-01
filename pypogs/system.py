@@ -239,8 +239,16 @@ class System:
         self._star_cam = None
         self._receiver = None
         self._mount = None
-        self._supported_models = {'mount': Mount._supported_models, 'camera': Camera._supported_models, 'receiver': Receiver._supported_models}
-        self._default_model = {'mount': Mount._default_model, 'camera': Camera._default_model, 'receiver': Receiver._default_model}
+        self._supported_models = {
+          'mount':    Mount.available(),
+          'camera':   Camera._supported_models,
+          'receiver': Receiver._supported_models,
+        }
+        self._default_model = {
+          'mount':    'dummy',
+          'camera':   Camera._default_model,
+          'receiver': Receiver._default_model,
+        }
         self._alignment = Alignment()
         self._target = Target()
         # tetra3 instance used for plate solving
@@ -824,7 +832,7 @@ class System:
             self._mount = mount
         self._logger.debug('Mount set to: ' + str(self._mount))
 
-    def add_mount(self, *args, **kwargs):
+    def add_mount(self, model, *args, **kwargs):
         """Create and set a pypogs.Mount for System.mount. Arguments passed to constructor.
 
         Args:
@@ -844,7 +852,7 @@ class System:
         if self.mount is not None:
             self._logger.debug('Already have a mount, clear first')
             self.mount = None
-        self.mount = Mount(*args, **kwargs)
+        self.mount = Mount.factory(model)(*args, **kwargs)
         return self.mount
 
     def clear_mount(self):
@@ -2170,7 +2178,7 @@ class Target:
         elif isinstance(self._target, sgp4.EarthSatellite):
             ts_time = self._skyfield_ts.from_astropy(times)
             itrf_xyz = (self._target.ITRF_position_velocity_error(ts_time)[0]
-                        * apy_unit.au.in_units(apy_unit.m))
+                        * apy_unit.au.to(apy_unit.m))
             return itrf_xyz
 
 
@@ -2252,9 +2260,8 @@ class StellariumTelescopeServer:
         self._thread      = None
     
         def run():
-            if self.parent.mount is not None and self.parent.mount.model == 'ASCOM':  
-                import pythoncom
-                pythoncom.CoInitialize()
+            if self.parent.mount:
+                self.parent.mount.prep_thread_if_not_prepped()
         
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.bind((self._address, self._port))
