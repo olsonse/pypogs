@@ -8,6 +8,7 @@ Run this script (i.e. type python run_pypogsGUI.py in a termnial window) to star
 import sys
 sys.path.append('..')
 import pypogs
+from pathlib import Path
 
 TOP_DIR = Path(__file__).parent.parent
 
@@ -34,8 +35,9 @@ sys.alignment.set_alignment_enu()
 # ADD MOUNT:
 #sys.add_mount(model="ASCOM", identity="Simulator")
 #sys.add_mount(model="ASCOM", identity="DeviceHub", axis_directions=(1, -1))  # ascom inverts alt axis?
-sys.add_mount(model="iOptron AZMP", identity="COM2", max_rate=(16, 16))
+#`sys.add_mount(model="iOptron AZMP", identity="COM2", max_rate=(16, 16))
 #sys.add_mount(model="Celestron", identity="COM5")
+sys.add_mount(model="dummy", identity='Dummy', max_rate=(20, 20))
 
 # APPLICATION LINKS
 # Use address 127.0.0.1 if the external application runs on this computer.
