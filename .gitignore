@@ -31,3 +31,7 @@
 *.dat                  
 *.pyc
 tetra3
+
+#Exclude common backup files from editors
+*~
+*.swp
