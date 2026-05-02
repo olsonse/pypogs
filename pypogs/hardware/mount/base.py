@@ -410,6 +410,13 @@ class Mount(base.Hardware):
         self._state_cache['azi'] = azi
         return alt, azi
 
+    def _post_initialize(self):
+        """Finish init with getting coords."""
+        try:
+            self.get_alt_az() #Get cache to update
+        except AssertionError:
+            self._logger.debug('Failed to set state cache', exc_info=True)
+
     @abc.abstractmethod
     def _command_get_alt_az(self):
         """Get the current alt and azi angles of the mount.

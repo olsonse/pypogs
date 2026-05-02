@@ -33,7 +33,7 @@ License:
 
 from .hardware_camera import Camera
 from .mount.base import Mount
-from .hardware_receiver import Receiver
+from .receiver.base import Receiver
 
 __all__ = ['Camera', 'Mount', 'Receiver']
 

@@ -28,6 +28,8 @@ available = dict(
   },
 
   receiver = {
+    'ni_daq'        : 'receiver.ni.Receiver',
+    'dummy'         : 'receiver.dummy.Receiver',
   },
 )
 

@@ -242,12 +242,12 @@ class System:
         self._supported_models = {
           'mount':    Mount.available(),
           'camera':   Camera._supported_models,
-          'receiver': Receiver._supported_models,
+          'receiver': Receiver.available(),
         }
         self._default_model = {
           'mount':    'dummy',
           'camera':   Camera._default_model,
-          'receiver': Receiver._default_model,
+          'receiver': 'dummy',
         }
         self._alignment = Alignment()
         self._target = Target()
@@ -782,7 +782,7 @@ class System:
             self._receiver = rec
         self._logger.debug('Receiver set to: ' + str(self._receiver))
 
-    def add_receiver(self, *args, **kwargs):
+    def add_receiver(self, model, *args, **kwargs):
         """Create and set a pypogs.Receiver for the system. Arguments passed to contructor.
 
         Args:
@@ -802,7 +802,7 @@ class System:
         if self.receiver is not None:
             self._logger.debug('Already have a receiver, clear first')
             self.receiver = None
-        self.receiver = Receiver(*args, **kwargs)
+        self.receiver = Receiver.factory(model)(*args, **kwargs)
         return self.receiver
 
     def clear_receiver(self):

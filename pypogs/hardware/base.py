@@ -199,10 +199,12 @@ class Hardware(abc.ABC):
         self._initialize()
         self._is_init = True
         self._logger.info('%s initialised.', self.type)
-        try:
-            self.get_alt_az() #Get cache to update
-        except AssertionError:
-            self._logger.debug('Failed to set state cache', exc_info=True)
+        self._post_initialize()
+
+    def _post_initialize(self):
+        """Possible function to implement by hardware implementations to run
+        something after intialize is really complete."""
+        pass
 
     @abc.abstractmethod
     def _initialize(self):
