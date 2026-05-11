@@ -31,7 +31,7 @@ License:
     limitations under the License.
 """
 
-from .hardware_camera import Camera
+from .camera.base import Camera
 from .mount.base import Mount
 from .receiver.base import Receiver
 

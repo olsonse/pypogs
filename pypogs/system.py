@@ -241,12 +241,12 @@ class System:
         self._mount = None
         self._supported_models = {
           'mount':    Mount.available(),
-          'camera':   Camera._supported_models,
+          'camera':   Camera.available(),
           'receiver': Receiver.available(),
         }
         self._default_model = {
           'mount':    'dummy',
-          'camera':   Camera._default_model,
+          'camera':   'dummy',
           'receiver': 'dummy',
         }
         self._alignment = Alignment()
@@ -552,12 +552,12 @@ class System:
                 self._logger.debug('Got a different camera, clear the old one')
                 self.star_camera = None
                 self._logger.debug('Create new camera')
-                self.star_camera = Camera(model=model, identity=identity, name=name,
-                                        auto_init=auto_init, properties=properties)
+                self.star_camera = Camera.factory(model)(identity=identity,
+                  name=name, auto_init=auto_init, **properties)
         else:
             self._logger.debug('Dont have anything old to clean up, create new camera')
-            self.star_camera = Camera(model=model, identity=identity, name=name,
-                                      auto_init=auto_init, properties=properties)
+            self.star_camera = Camera.factory(model)(
+              identity=identity, name=name, auto_init=auto_init, **properties)
         return self.star_camera
 
     def add_star_camera_from_coarse(self):
@@ -631,13 +631,13 @@ class System:
                 self._logger.debug('Got a different camera, clear the old one')
                 self.coarse_camera = None
                 self._logger.debug('Create new camera')
-                self.coarse_camera = Camera(model=model, identity=identity, name=name,
-                                            auto_init=auto_init)
+                self.coarse_camera = Camera.factory(model)(
+                  identity=identity, name=name, auto_init=auto_init)
                 return self.coarse_camera
         else:
             self._logger.debug('Dont have anything old to clean up, create new camera')
-            self.coarse_camera = Camera(model=model, identity=identity, name=name,
-                                        auto_init=auto_init, properties=properties)
+            self.coarse_camera = Camera.factory(model)(
+              identity=identity, name=name, auto_init=auto_init, **properties)
         return self.coarse_camera
 
     def add_coarse_camera_from_star(self):
@@ -710,13 +710,13 @@ class System:
                 self._logger.debug('Got a different camera, clear the old one')
                 self.fine_camera = None
                 self._logger.debug('Create new camera')
-                self.fine_camera = Camera(model=model, identity=identity, name=name,
-                                          auto_init=auto_init)
+                self.fine_camera = Camera.factory(model)(
+                  identity=identity, name=name, auto_init=auto_init)
                 return self.fine_camera
         else:
             self._logger.debug('Dont have anything old to clean up, create new camera')
-            self.fine_camera = Camera(model=model, identity=identity, name=name,
-                                        auto_init=auto_init, properties=properties)
+            self.fine_camera = Camera.factory(model)(
+              identity=identity, name=name, auto_init=auto_init, **properties)
         return self.fine_camera
 
     def clear_fine_camera(self):

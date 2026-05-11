@@ -25,6 +25,9 @@ available = dict(
   },
 
   camera = {
+    'ptgrey'        : 'camera.spinnaker.Camera',
+    'zwoasi'        : 'camera.zwoasi.Camera',
+    'ascom'         : 'camera.ascom.Camera',
   },
 
   receiver = {
