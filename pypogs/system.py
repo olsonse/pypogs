@@ -39,7 +39,6 @@ import socket, struct, math, re
 import numpy as np
 from astropy.time import Time as apy_time, TimeDelta as apy_time_delta
 from astropy import units as apy_unit, coordinates as apy_coord, utils as apy_util
-from satellite_tle import fetch_tle_from_celestrak
 from skyfield import sgp4lib as sgp4
 from skyfield import api as sf_api
 from tifffile import imwrite as tiff_write
@@ -49,6 +48,7 @@ from tetra3 import Tetra3
 from .hardware import Camera, Mount, Receiver
 from .tracking import TrackingThread, ControlLoopThread
 from .horizons_ephem import Ephem
+from .celestrak import fetch_tle_from_celestrak
 
 # Useful definitions:
 EPS = 10**-6  # Epsilon for use in non-zero check
