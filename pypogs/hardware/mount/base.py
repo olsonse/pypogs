@@ -1,9 +1,8 @@
 # vim: ts=4:sw=4:tw=80:nowrap
 
-import abc
+import abc, logging, time
 from pathlib import Path
-from threading import Thread
-import logging
+from threading import Thread, RLock
 from math import copysign
 
 from .. import base
@@ -86,9 +85,12 @@ class Mount(base.Hardware):
       'zero_altitude', 'home_alt_az', 'max_rate', 'alt_limit', 'azi_limit',
     ) + base.Hardware.available_properties
 
-    # mounts can override this, but should include 'sidereal' and 'idle'
-    # this really isn't used (yet, except by the dummy mount)
-    _known_tracking_modes = {'sidereal', 'solar', 'lunar', 'custom', 'idle'}
+    # mounts should probably override this, but should include (and implement)
+    # 'sidereal' and 'custom' to work for pypogs
+    known_tracking_modes = {'sidereal', 'solar', 'lunar', 'custom', 'idle'}
+
+    EMPTY_STATE_CACHE = {'alt' : None, 'azi' : None,
+                         'alt_rate' : None, 'azi_rate' : None}
 
     def __init__(self, *a, **kw):
         """
@@ -104,8 +106,8 @@ class Mount(base.Hardware):
         self._control_thread = None
         self._control_thread_stop = True
         # Cache of the state of the mount
-        self._state_cache = {'alt' : 0.0, 'azi' : 0.0,
-                             'alt_rate' : 0.0, 'azi_rate' : 0.0}
+        self._state_cache = self.EMPTY_STATE_CACHE.copy()
+        self.lock = RLock()
         super().__init__(*a, **kw)
 
     @property
@@ -115,11 +117,14 @@ class Mount(base.Hardware):
 
         Keys:
             azi: float, alt: float, azi_rate: float, alt_rate: float
+
+        Returns a *copy* of the current state cache.
         """
         if self.is_init:
-            return self._state_cache
+            with self.lock:
+                return self._state_cache.copy()
         else:
-            return None
+            return self.EMPTY_STATE_CACHE.copy()
 
     @property
     def zero_altitude(self):
@@ -249,20 +254,23 @@ class Mount(base.Hardware):
         """
         pass
 
-
     @property
     def is_sidereal_tracking(self):
         return self.tracking_mode == 'sidereal'
+
+    @property
+    def is_custom_tracking(self):
+        return self.tracking_mode == 'custom'
 
     @abc.abstractproperty
     def tracking_mode(self):
         """
         Return the current tracking mode of the mount.  This return value should
         generally be taken from one of the following:
-          - sidereal
+          - sidereal (*required)
           - solar
           - lunar
-          - custom
+          - custom (can accept custom rates for axis motion; *required)
           - idle (for "not tracking", or simple "GoTo")
 
         Implementing classes should also implement this as a setter.
@@ -406,8 +414,9 @@ class Mount(base.Hardware):
         assert self.is_init, 'Must be initialised'
         #self._logger.debug('Requesting mount position')
         alt, azi = self._command_get_alt_az()
-        self._state_cache['alt'] = alt
-        self._state_cache['azi'] = azi
+        with self.lock:
+            self._state_cache['alt'] = alt
+            self._state_cache['azi'] = azi
         return alt, azi
 
     def _post_initialize(self):
@@ -466,8 +475,9 @@ class Mount(base.Hardware):
               old_azi, azi)
 
         alt, azi = self._command_set_axis_rates(alt, azi)
-        self._state_cache['alt_rate'] = alt
-        self._state_cache['azi_rate'] = azi
+        with self.lock:
+            self._state_cache['alt_rate'] = alt
+            self._state_cache['azi_rate'] = azi
 
     @abc.abstractmethod
     def _command_set_axis_rates(self, alt, azi):
@@ -478,16 +488,15 @@ class Mount(base.Hardware):
         """
         pass
 
-    def start_sidereal_tracking(self):
+    def switchto_sidereal_tracking(self):
         """
         Only a backwards compatible helper function to set tracking to sidereal
         """
         self.tracking_mode = 'sidereal'
 
-    def stop_tracking(self):
+    def switchto_custom_tracking(self):
         """Helper function to stop all tracking."""
-        self.tracking_mode = 'idle'
-    stop_sidereal_tracking = stop_tracking
+        self.tracking_mode = 'custom'
 
     def stop(self):
         """
@@ -503,7 +512,8 @@ class Mount(base.Hardware):
                 self._logger.debug('Stopped')
             self._logger.debug('Sending zero rate command')
             self.set_rate_alt_az(0, 0)
-            self.stop_sidereal_tracking()
+            if not self.is_custom_tracking:
+                self.switchto_custom_tracking()
         self._logger.debug('Stopped mount')
 
     def wait_for_move_to(self, timeout=120):
@@ -514,12 +524,12 @@ class Mount(base.Hardware):
             raising TimeoutError. Default 120.
         """
         assert self.is_init, 'Must be initialised'
-        t_start = timestamp()
+        t_start = time.time()
         self._logger.debug('Waiting for move to, start time: %d', t_start)
         try:
-            while timestamp() - t_start < timeout:
+            while time.time() - t_start < timeout:
                 if self.is_moving:
-                    sleep(.5)
+                    time.sleep(.5)
                 else:
                     return
         except KeyboardInterrupt:

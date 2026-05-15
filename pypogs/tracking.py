@@ -189,7 +189,7 @@ class ControlLoopThread:
                                    'ft_track_azi': None, 'ft_mean_azi': None, 'ft_track_sd': None,
                                    'ft_rmse': None, 'ft_search_x': None, 'ft_search_y': None,
                                    'ft_search_rad': None}
-        self._state_cache = self._empty_state_cache
+        self._state_cache = self._empty_state_cache.copy()
         # Tracking feedback settings
         self._projection_time_adjustment = 0  # Projection time adjustment in seconds
         self._reset_integral_if_saturated = True
@@ -256,11 +256,14 @@ class ControlLoopThread:
 
     @property
     def state_cache(self):
-        """dict: Get dictionary with last cached state."""
+        """dict: Get dictionary with last cached state.
+
+        Returns a *copy* of the current state cache.
+        """
         if self.is_running:
-            return self._state_cache
+            return self._state_cache.copy()
         else:
-            return self._empty_state_cache
+            return self._empty_state_cache.copy()
 
     @property
     def data_folder(self):
@@ -757,7 +760,7 @@ class ControlLoopThread:
         if self._thread is not None and self._thread.is_alive():
             self._log_debug('Waiting for worker thread to exit')
             self._thread.join()
-        self._state_cache = self._empty_state_cache
+        self._state_cache = self._empty_state_cache.copy()
         self._log_info('Control thread stopped.')
 
     def start(self):

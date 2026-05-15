@@ -55,6 +55,7 @@ class Hardware(abc.ABC):
         """
         self._is_init = False
         self._thread_prepped = False
+        self._identity = None
 
         assert self.type != None, 'Implementing classes must define type'
         super().__init__()
@@ -94,9 +95,10 @@ class Hardware(abc.ABC):
                 self._logger.warning('Failed to set property "%s"="%s"', k, v)
 
         self.name = name
-        self.identity = identity
-        if auto_init:
-            self.initialize() # model is already defined, so do init
+        if identity:
+            self.identity = identity
+            if self.identity and auto_init:
+                self.initialize() # model is already defined, so do init
 
         # Try to get Python to clean up the object properly
         import atexit, weakref

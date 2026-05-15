@@ -422,9 +422,10 @@ class TrackingControlFrame(ttk.Frame):
 #        self.update()
 
     def start_tracking_callback(self):
-        if self.sys.mount is not None and self.sys.mount.is_init and self.sys.mount.is_sidereal_tracking:
-            self.logger.debug('Sidereal tracking is on.  Will turn off.')
-            self.sys.mount.stop_sidereal_tracking()
+        if self.sys.mount is not None and self.sys.mount.is_init and \
+           not self.sys.mount.is_custom_tracking:
+            self.logger.debug('Custom tracking is *not* on.  Will turn on.')
+            self.sys.mount.switchto_custom_tracking()
         try:
             self.sys.start_tracking()
         except Exception as err:
@@ -1942,15 +1943,14 @@ class StatusFrame(ttk.Frame):
     def update(self):
         self.logger.debug('StatusFrame got update request')
         """Update status once. Auto update with start() and stop() instead."""
-        keys = ('alt', 'azi', 'alt_rate', 'azi_rate')
-        mount_state = self.sys.mount.state_cache if self.sys.mount is not None else None
+        mount_state = {'alt':None, 'azi':None, 'alt_rate':None, 'azi_rate':None}
+        if self.sys.mount != None:
+            mount_state = self.sys.mount.state_cache
         status_string = ''
-        for key in keys:
-            try:
-                status_string += ('{:>13s}:'.format(key) + '{: 7.2f}'.format(mount_state[key]) + '\n')
-            except:
-                status_string += ('{:>13s}:'.format(key) + '  ---  ' + '\n')
-                
+        for key, value in mount_state.items():
+            vstr = '{: 7.2f}'.format(value) if value != None else '  ---  '
+            status_string += '{:>13s}:{}\n'.format(key, vstr)
+
         control_state = self.sys.control_loop_thread.state_cache
             
         # Modify mode indicator
@@ -2038,6 +2038,10 @@ class MountControlFrame(ttk.Frame):
                 ttk.Style().configure('sidereal.TButton', background='green', foreground='green')
                 self.sidereal_button['text'] = 'Stop sidereal tracking'
                 #self.sys.mount.get_alt_az()
+            elif not self.sys.mount.is_custom_tracking:
+                ttk.Style().configure('sidereal.TButton', background='yellow', foreground='green')
+                self.sidereal_button['text'] = 'Switch to custom tracking'
+                #self.sys.mount.get_alt_az()
             else:
                 ttk.Style().configure('sidereal.TButton',\
                                      background=ttk.Style().lookup('TButton', 'background'), \
@@ -2113,9 +2117,9 @@ class MountControlFrame(ttk.Frame):
 
     def toggle_sidereal_tracking(self):
         self.logger.debug('Sidereal tracking button clicked')
-        if self.sys.mount.is_sidereal_tracking:
-            self.logger.debug('Sidereal tracking is on.  Will turn off.')            
-            self.sys.mount.stop_sidereal_tracking()
+        if not self.sys.mount.is_custom_tracking:
+            self.logger.debug('Custom tracking is off.  Will turn on.')
+            self.sys.mount.switchto_custom_tracking()
         else:
             self.logger.debug('Sidereal tracking is off.  Will turn on.')
             # Require mount initialized
@@ -2129,7 +2133,7 @@ class MountControlFrame(ttk.Frame):
                 ErrorPopup(self, err, self.logger)
             # Start sidereal tracking
             self.logger.debug('Starting sidereal tracking')
-            self.sys.mount.start_sidereal_tracking()
+            self.sys.mount.switchto_sidereal_tracking()
             
 class ErrorPopup(tk.Toplevel):
     """Extends tkinter.Toplevel for error popups"""

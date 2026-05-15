@@ -2318,8 +2318,9 @@ class StellariumTelescopeServer:
 
                                 # Send mount coordinates to Stellarium:
                                 try:
-                                    mount_alt = self.parent.mount._state_cache['alt'] 
-                                    mount_azi  = self.parent.mount._state_cache['azi'] 
+                                    mount_state = self.parent.mount.state_cache
+                                    mount_alt = mount_state['alt']
+                                    mount_azi  = mount_state['azi']
                                 except AttributeError:
                                     continue
                                 mount_ra, mount_dec = (0, 0)
@@ -2478,8 +2479,9 @@ class TargetServer:
 
                             # Send mount position:
                             '''
-                            mount_alt = self.parent.mount._state_cache['alt'] 
-                            mount_azi  = self.parent.mount._state_cache['azi'] 
+                            mount_state = self.parent.mount.state_cache
+                            mount_alt = mount_state['alt']
+                            mount_azi = mount_state['azi']
                             mount_ra, mount_dec = (0, 0)
                             icrs = apy_coord.ICRS()
                             c = apy_coord.AltAz(

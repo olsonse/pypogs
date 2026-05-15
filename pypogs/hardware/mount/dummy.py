@@ -42,7 +42,7 @@ class Mount(base.Mount):
 
     @tracking_mode.setter
     def tracking_mode(self, value):
-        assert value in self._known_tracking_modes, \
+        assert value in self.known_tracking_modes, \
           f'Unknown tracking mode: "{value}"'
         with self._lock:
             self._tracking_mode = value

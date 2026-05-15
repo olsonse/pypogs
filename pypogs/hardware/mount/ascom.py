@@ -9,7 +9,7 @@ class Mount(base.Mount):
     _hardware_max_rates = None, None
     hardware_altitude_limits = None, None
     hardware_azimuth_limits = None, None
-    _known_tracking_modes = {'sidereal', 'idle'}
+    known_tracking_modes = {'sidereal', 'custom'}
     available_properties = base.Mount.available_properties + ('axis_direction',)
 
     def __init__(self, *a, **kw):
@@ -100,10 +100,9 @@ class Mount(base.Mount):
           - solar
           - lunar
           - custom
-          - idle (for "not tracking", or simple "GoTo")
         """
         return 'sidereal' if (self._ascom_telescope != None and
-                              self._ascom_telescope.Tracking) else 'idle'
+                              self._ascom_telescope.Tracking) else 'custom'
     @tracking_mode.setter
     def tracking_mode(self, value):
         if value == 'sidereal':
@@ -113,7 +112,7 @@ class Mount(base.Mount):
                     self._ascom_telescope.Tracking = True  #turn on tracking
                 except:
                     self._logger.warning('Failed to start sidereal tracking.')
-        elif value == 'idle':
+        elif value == 'custom':
             if hasattr(self._ascom_telescope, 'CanSetTracking') \
                and self._ascom_telescope.CanSetTracking:
                 try:

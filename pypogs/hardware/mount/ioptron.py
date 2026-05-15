@@ -10,7 +10,7 @@ class AZMP(serial.Mount):
       command=':MountInfo#',
       response_regex = b'(5035|9035)$',
     )
-    _known_tracking_modes = {'sidereal', 'idle'}
+    known_tracking_modes = {'sidereal', 'custom', 'idle'}
 
     # FIXME:  look these up?  Can these be queried?
     hardware_max_rates = None, None
@@ -62,7 +62,9 @@ class AZMP(serial.Mount):
             status = mount_state[14]
             self._logger.debug('Mount tracking state: "%s"', status)
             return 'sidereal' if status in '15' else 'idle'
-        return 'idle'
+        assert self._azmp_command_mode == 'special', \
+          'expected special command mode'
+        return 'custom'
 
     @tracking_mode.setter
     def tracking_mode(self, value):
@@ -77,7 +79,7 @@ class AZMP(serial.Mount):
               'Mount did not acknowledge!'
             #self.send_text_command(':ST1#')
             #assert self.check_ack('1'), 'Mount did not acknowledge!'
-        elif value == 'idle':
+        elif value == 'custom':
             # sidereal tracking (and state check) is only supported in normal
             # commanding mode.
             #self.azmp_get_command_mode()
@@ -144,7 +146,7 @@ class AZMP(serial.Mount):
         if self._azmp_command_mode == 'normal':
             self._logger.debug('Ensuring sidereal tracking is off and '
                                'transition to special')
-            self.stop_sidereal_tracking()
+            self.switchto_custom_tracking()
             self.azmp_set_command_mode('special')
             assert self._azmp_command_mode == 'special', \
               'Unable to switch mount to special command mode.'

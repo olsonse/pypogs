@@ -12,7 +12,7 @@ class Mount(serial.Mount):
       command='m',
       response_regex = rb'#(\s+|.)$',
     )
-    _known_tracking_modes = {'sidereal', 'idle'}
+    known_tracking_modes = {'sidereal', 'custom'}
 
     # FIXME:  look these up?  Can these be queried?
     hardware_max_rates = None, None
@@ -28,11 +28,10 @@ class Mount(serial.Mount):
           - solar
           - lunar
           - custom
-          - idle (for "not tracking", or simple "GoTo")
         """
         tracking_mode = self.query_command('t')
         return 'sidereal' if tracking_mode != None and tracking_mode[0] == '1' \
-               else 'idle'
+               else 'custom'
 
     @tracking_mode.setter
     def tracking_mode(self, value):
@@ -53,7 +52,7 @@ class Mount(serial.Mount):
             # t.join()
             # assert success[0], 'Failed communicating with mount'
             # self._is_sidereal_tracking = True
-        elif value == 'idle':
+        elif value == 'custom':
             self.cel_tracking_off()
         else:
             raise ValueError(f'Do not know how to set tracking_mode="{value}"')
