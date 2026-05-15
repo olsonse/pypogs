@@ -21,6 +21,7 @@ available = dict(
     'ASCOM'         : 'mount.ascom.Mount',
     'iOptron AZMP'  : 'mount.ioptron.AZMP',
     'Celestron'     : 'mount.celestron.Mount',
+    'INDI'          : 'mount.indi.Mount',
     'dummy'         : 'mount.dummy.Mount',
   },
 
