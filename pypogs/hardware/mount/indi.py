@@ -187,7 +187,8 @@ class Mount(base.Mount, indi_base.Hardware):
             self.tracking_active = True
 
     def _movement_active(self):
-        return False
+        ra_dec = self.getProperty('Number', 'EQUATORIAL_EOD_COORD')
+        return ra_dec.getState() == PyIndi.IPS_BUSY
 
     def _do_command_to_alt_az(self, alt, azi):
         """Command mount to slew to alt/az coordinates. Must be initialised.
@@ -204,10 +205,7 @@ class Mount(base.Mount, indi_base.Hardware):
         altaz = SkyCoord(alt=alt*U.deg, az=azi*U.deg,
                          frame=AltAz(obstime=obstime, location=loc))
         radec = altaz.transform_to(FK5(equinox=obstime))
-        ra_dec = PyIndi.PropertyNumber(2)
-        ra_dec.setDeviceName(self.device_name)
-        ra_dec[0].setName('RA')
-        ra_dec[1].setName('DEC')
+        ra_dec = self.getProperty('Number', 'EQUATORIAL_EOD_COORD')
         ra_dec[0].setValue(float(radec.ra.to(U.deg).value))
         ra_dec[1].setValue(float(radec.dec.to(U.deg).value))
         self.sendNewNumber(ra_dec)
