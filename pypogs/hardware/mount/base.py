@@ -174,9 +174,9 @@ class Mount(base.Hardware):
         assert isinstance(maxrate, (int, float)) or len(maxrate) == 2, \
           'Must be scalar or array of length 2'
         if isinstance(maxrate, (int, float)):
-            maxrate = tuple([float(x) for x in maxrate])
+            maxrate = [float(maxrate), float(maxrate)]
         else:
-            maxrate = (float(maxrate[0]), float(maxrate[1]))
+            maxrate = [float(maxrate[0]), float(maxrate[1])]
 
         # now limit user-inputs to any given hardware-provided absolute maxima
         hw = self.hardware_max_rates
@@ -185,7 +185,7 @@ class Mount(base.Hardware):
         if hw[1] is not None:
           maxrate[1] = min(maxrate[1], hw[1])
 
-        self._max_speed = maxrate
+        self._max_speed = tuple(maxrate)
         self._logger.debug('Set max rate to: %s', self.max_rate)
 
 
@@ -457,8 +457,13 @@ class Mount(base.Hardware):
         """
         assert self.is_init, 'Must be initialised'
         self._logger.debug('Got rate command. alt=' + str(alt) + ' azi=' + str(azi))
-        if (abs(alt) > self._max_speed[0]) or  (abs(azi) > self._max_speed[1]):
-            raise ValueError('Above maximum speed! ('+str(abs(alt))+', '+str(abs(azi))+')')
+        if (abs(alt) > self.max_rate[0]):
+            raise ValueError('Altitude rate above maximum speed! '
+                             f'(|{alt}| > {self.max_rate[0]})')
+
+        if (abs(azi) > self.max_rate[1]):
+            raise ValueError('Azimuth rate above maximum speed! '
+                             f'(|{azi}| > {self.max_rate[1]})')
 
         hw = self.hardware_max_rates
         if hw[0] != None and abs(alt) > hw[0]:

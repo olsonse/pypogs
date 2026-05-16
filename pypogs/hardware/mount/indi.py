@@ -6,8 +6,9 @@ This interface allows for more use of INDI-supported hardware, opening up more
 generic access to mount hardware.
 """
 
-import time, threading
+import time
 from functools import cached_property
+from math import copysign
 from astropy import units as U
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, FK5
 from astropy.time import Time
@@ -15,7 +16,7 @@ import numpy as np
 import PyIndi
 
 from . import base
-from ..indi_util import parse_identity
+from .. import indi_base
 
 def INDI_az_to_pypogs_az(azimuth):
     """
@@ -33,7 +34,7 @@ def pypogs_az_to_INDI_az(azimuth):
 
 # be sure to keep PyIndi.BaseClient as the last in the inheritance chain because
 # the PyIndi SWIG implementation does not correctly call super().__init__().
-class Mount(base.Mount, PyIndi.BaseClient):
+class Mount(base.Mount, indi_base.Hardware):
     """Pypogs interface to an INDI-supported mount.
 
     Identity is specified as:
@@ -46,7 +47,7 @@ class Mount(base.Mount, PyIndi.BaseClient):
       PORT : TCP port of remote INDI server (defaults to 7624).
       MOUNT: Name of Telescope interface on remote INDI server.
     """
-    hardware_max_rates = None, None
+    _hardware_max_rates = None, None
     hardware_altitude_limits = None, None
     hardware_azimuth_limits = None, None
 
@@ -54,13 +55,13 @@ class Mount(base.Mount, PyIndi.BaseClient):
 
     MAX_ENUMERATION_WAIT = 10 # maximum wait (in seconds) for device updates
 
-    CACHED_PROPERTIES = [
-      'device_name', 'known_tracking_modes', 'mount_type',
-      'has_custom_track_rate',
+    CACHED_PROPERTIES = indi_base.Hardware.CACHED_PROPERTIES + [
+      'known_tracking_modes', 'mount_type', 'has_custom_track_rate',
     ]
 
+    REQUIRED_INTERFACE = PyIndi.BaseDevice.TELESCOPE_INTERFACE
+
     def __init__(self, *a, **kw):
-        self.device = None
         # mount location taken from GEOGRAPHIC_COORD property from mount
         self._location = None
         # raw ra/dec given from EQUATORIAL_EOD_COORD property from mount
@@ -75,91 +76,23 @@ class Mount(base.Mount, PyIndi.BaseClient):
         self._altaz = [0.0, 0.0]
         super().__init__(*a, **kw)
 
-    def open_device(self, identity):
-        """
-        Open connection to server and test if this is a telescope mount.
-
-        Returns SWIG proxy/handle to telescope device.
-        """
-        parsed = self.parse_identity(identity)
-        if not parsed:
-            raise ValueError(f'INDI:  invalid INDI mount "{identity}"; '
-                             'expected [HOST[:PORT]/]MOUNT')
-        host, port, device = parsed
-
-        self.setServer(host, int(port))
-        if not self.connectServer():
-            return None
-        try:
-            tf = time.time() + self.MAX_ENUMERATION_WAIT
-            D = None
-            while not D and time.time() <= tf:
-                time.sleep(0.1)
-                D = self.getDevice(device)
-            good = (bool(D) and
-                    bool(D.getDriverInterface() & D.TELESCOPE_INTERFACE)
-            )
-            # TODO: implement more checks to see if the device has enough
-            # capability for pypogs
-            return D if good else None
-        except:
-            self.setServer(old_host, old_port)
-
-    def close(self):
-        del self.device
-        self.device = None
-        self.disconnectServer()
-
-    def free_cached_properties(self):
-        # clear all 
-        for attr in self.CACHED_PROPERTIES:
-            try: delattr(self, attr)
-            except: pass
-
-    def set_identity(self, identity):
-        try:
-            if not self.open_device(identity):
-                raise ValueError(
-                  f'INDI:  Could not connect to INDI mount "{identity}"; ')
-        finally:
-            self.close()
-        self._identity = identity
-        self.free_cached_properties() # reset cached device name
-
-    def parse_identity(self, identity):
-        if not identity:
-            return None
-        m = parse_identity(identity)
-        if not m:
-            return None
-        old_host, old_port = self.getHost(), self.getPort()
-        host = m['host'] or old_host
-        port = m['port'] or old_port
-        device = m['quoted_device'] or m['dquoted_device'] or m['device']
-        return host, port, device
-
     def _post_initialize(self):
         """INDI will wait until next property update..."""
         pass
 
-    @cached_property
-    def device_name(self):
-        parsed = self.parse_identity(self.identity)
-        if not parsed:
-            return ''
-        return parsed[-1]
+    def _initialize(self):
+        super()._initialize()
 
-    def getProperty(self, type, name):
-        """Attempt to wait for INDI server to send properties to client"""
-        getfun = getattr(self.device, 'get' + type)
-        prop = None
-        tf = time.time() + 4 * self.polling_period # quite permissive in time
-        while not prop and time.time() <= tf:
-            time.sleep(0.01)
-            prop = getfun(name)
-        if not prop:
-            raise RuntimeError(f'Could not get INDI {type}: "{name}"')
-        return prop
+        # absolute hardware max rates (or at least as represented by INDI)
+        tr = self.getProperty('Number', 'TELESCOPE_TRACK_RATE')
+        mx = (min(abs(tr[0].getMin()), tr[0].getMax()) * U.arcsec/U.s,
+              min(abs(tr[1].getMin()), tr[1].getMax()) * U.arcsec/U.s)
+        self._hardware_max_rates = (float(mx[0].to(U.deg/U.s).value),
+                                    float(mx[1].to(U.deg/U.s).value))
+
+    @property
+    def hardware_max_rates(self):
+        return self._hardware_max_rates
 
     @cached_property
     def known_tracking_modes(self):
@@ -176,19 +109,6 @@ class Mount(base.Mount, PyIndi.BaseClient):
         S = {mi.getName().lower() for mi in mt if mi.getState() ==PyIndi.ISS_ON}
         assert len(S) == 1, 'INDI Telescope is more than one mount type!!!'
         return S.pop()
-
-    @property
-    def polling_period(self):
-        """Returns the INDI polling period (in seconds) for the main device"""
-        assert self.is_init, 'Cannot query tracking modes without connection'
-        # for polling period, we will wait at least as long as enumeration time
-        tf = time.time() + self.MAX_ENUMERATION_WAIT
-        pp = None
-        while not pp and time.time() <= tf:
-            time.sleep(0.01)
-            pp = self.device.getNumber('POLLING_PERIOD')
-        S = {pi.getName().lower():pi.getValue() for pi in pp}
-        return S.get('period_ms', 1000) / 1000.0
 
     @cached_property
     def has_custom_track_rate(self):
@@ -265,20 +185,6 @@ class Mount(base.Mount, PyIndi.BaseClient):
 
         if not self.tracking_active:
             self.tracking_active = True
-
-    def _initialize(self):
-        self.watchDevice(self.device_name)
-
-        self.device = self.open_device(self.identity)
-        if not self.device:
-            self.close()
-            raise RuntimeError(f'Could not open INDI device: "{self.identity}"')
-
-        self.free_cached_properties()
-
-    def _deinitialize(self):
-        self.close()
-        self.free_cached_properties()
 
     def _movement_active(self):
         return False
@@ -414,11 +320,8 @@ class Mount(base.Mount, PyIndi.BaseClient):
             raise NotImplementedError(
                 'INDI Mount does not support setting custom tracking rates')
 
-        tr = PyIndi.PropertyNumber(2)
-        tr.setDeviceName(self.device_name)
-        tr.setName('TELESCOPE_TRACK_RATE')
-        tr[0].setName('TRACK_RATE_RA')
-        tr[1].setName('TRACK_RATE_DE')
+        tr = self.getProperty('Number', 'TELESCOPE_TRACK_RATE')
+        old_rates = tr[0].getValue(), tr[1].getValue()
 
         if   self.mount_type == 'altaz':
             # can only find *some* hints online that we should just abuse the
@@ -428,8 +331,8 @@ class Mount(base.Mount, PyIndi.BaseClient):
             # library where SetTrackRate is implemented for an ALTAX mount.  If
             # this assumption is not true, then the INDI Telescope must be able
             # to convert RA/DEC rates to ALTAZ rates internally.
-            tr[0].setValue(dazi)
-            tr[1].setValue(dalt)
+            tr[0].setValue((dazi*U.deg/U.s).to(U.arcsec/U.s).value)
+            tr[1].setValue((dalt*U.deg/U.s).to(U.arcsec/U.s).value)
 
         elif self.mount_type == 'eq_gem':
             # need to convert dalt, dazi to dRA and dDEC
@@ -442,14 +345,35 @@ class Mount(base.Mount, PyIndi.BaseClient):
                              pm_alt      =dalt * U.deg/U.s,
                              pm_az_cosalt=dazi * np.cos(alt) * U.deg/U.s,
                              frame=AltAz(obstime=obstime, location=loc))
+            print('INPUT alt,az,pm_alt,pm_az_cosalt: ', altaz.alt, altaz.az,
+                  altaz.pm_alt, altaz.pm_az_cosalt)
             radec = altaz.transform_to(FK5(equinox=obstime))
+            print('--> ra,dec,pm_dec,pm_ra_cosdec: ', radec.ra, radec.dec,
+                  radec.pm_dec, radec.pm_ra_cosdec)
+            _A = radec.transform_to(AltAz(obstime=obstime, location=loc))
+            print('--> alt,az,pm_alt,pm_az_cosalt: ', _A.alt, _A.az,
+                  _A.pm_alt, _A.pm_az_cosalt)
 
             tr[0].setValue((radec.pm_ra_cosdec / np.cos(radec.dec))
-                           .to(U.deg/U.s).value)
-            tr[1].setValue(radec.pm_dec.to(U.deg/U.s).value)
+                           .to(U.arcsec/U.s).value)
+            tr[1].setValue(radec.pm_dec.to(U.arcsec/U.s).value)
         else:
             raise NotImplementedError(
                 f'Cannot send tracking rate to mount type "{self.mount_type}"')
+
+        # INDI needs to be fixed a little for when tracking is enabled.  INDI
+        # needs to be changed to send current rates to the driver upon enabling.
+        new_rates = tr[0].getValue(), tr[1].getValue()
+        if (new_rates[0]*old_rates[0] <0 or new_rates[1]*old_rates[1] <0) and \
+           self.tracking_active:
+            self._logger.warning('INDI: zeroing rates before sign-change; '
+                                 '[%.03g, %.03g]->[%.03g, %.03g]', *old_rates,
+                                 *new_rates)
+            tr[0].setValue(0)
+            tr[1].setValue(0)
+            self.sendNewNumber(tr) # zero before changing
+            tr[0].setValue(new_rates[0])
+            tr[1].setValue(new_rates[1])
 
         self.sendNewNumber(tr)
         return dalt, dazi
