@@ -255,6 +255,12 @@ class Camera(base.Hardware):
     def _set_size_readout(self, size):
         pass
 
+    @abc.abstractproperty
+    def exposure_time(self):
+        """float: Get or set the camera exposure time in ms.
+        """
+        pass
+
     def add_event_callback(self, method):
         r"""Add a method to be called when a new image shows up.
 

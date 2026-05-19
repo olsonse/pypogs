@@ -4,7 +4,7 @@ import abc
 import logging
 import numpy as np
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 from struct import pack as pack_data
 
 from .. import base
@@ -240,7 +240,7 @@ class Receiver(base.Hardware):
         """"Create data file and write the header."""
         assert self.data_folder is not None, 'No save path here...'
         self._logger.debug('Creating data file')
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(UTC)
         filename = timestamp.strftime('%Y-%m-%dT%H%M%S') + '_Receiver.dat'
         self._data_file = self.data_folder / Path(filename)
         self._logger.debug('File: ' + str(filename))
