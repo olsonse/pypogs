@@ -22,6 +22,9 @@ class Mount(base.Hardware):
     After the Mount is initialised, the gimbal angles and rates may be read and
     commanded. Several properties (e.g maximum angles and rates) may be set.
 
+    Mount implementations are not intended to be imported or instantiated
+    directly, but rather through the :meth:`pypogs.Mount.factory` class method.
+
     Args:
         identity (str or int, optional): String or int identifying the device.
             For model *Celestron* this can either be a string with the serial
@@ -67,7 +70,7 @@ class Mount(base.Hardware):
         2) The :class:`pypogs.Mount` class is actually an abstract class and
            cannot be directly instantiated.  As described above,
            :class:`pypogs.Mount` implementations that can be instantiated should
-           generally be looked up using the :function:`pypogs.Mount.factory`
+           generally be looked up using the :func:`pypogs.Mount.factory`
            static function.
     """
     # Notes to developers:
@@ -266,10 +269,11 @@ class Mount(base.Hardware):
         """
         Return the current tracking mode of the mount.  This return value should
         generally be taken from one of the following:
-          - sidereal (*required)
+
+          - sidereal (*required*)
           - solar
           - lunar
-          - custom (can accept custom rates for axis motion; *required)
+          - custom (can accept custom rates for axis motion; *required*)
           - idle (for "not tracking", or simple "GoTo")
 
         Implementing classes should also implement this as a setter.

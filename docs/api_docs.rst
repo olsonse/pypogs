@@ -22,9 +22,29 @@ the `pypogs ReadTheDocs website <https://pypogs.readthedocs.io/en/latest/>`_.
    :members:
 
 .. automodule:: pypogs.hardware
+
+Common Hardware Interface
+-------------------------
+.. autoclass:: pypogs.Hardware
+   :members:
+
+Camera-Specific Interface
+-------------------------
 .. autoclass:: pypogs.Camera
    :members:
+   :show-inheritance:
+   :inherited-members:
+
+Mount-Specific Interface
+------------------------
 .. autoclass:: pypogs.Mount
    :members:
+   :show-inheritance:
+   :inherited-members:
+
+Receiver-Specific Interface
+---------------------------
 .. autoclass:: pypogs.Receiver
    :members:
+   :show-inheritance:
+   :inherited-members:

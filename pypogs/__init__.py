@@ -1,12 +1,10 @@
 from .system import System, Alignment, Target
 from .tracking import ControlLoopThread, TrackingThread, SpotTracker
-from .hardware import Camera, Mount, Receiver
-from .hardware.mount.base import Mount
-from . import hardware
+from .hardware import Camera, Mount, Receiver, Hardware
 from .gui import GUI
 
 __all__ = ['System', 'Alignment', 'Target'
            'ControlLoopThread', 'TrackingThread', 'SpotTracker'
-           'Camera', 'Mount', 'Receiver', 'hardware']
+           'Camera', 'Mount', 'Receiver', 'Hardware']
 
 name = 'pypogs'

@@ -25,6 +25,10 @@ class Receiver(base.Hardware):
     auto-generated). While the acquisition is running the instantaneous (last
     measurement) and (exponentially) smoothed power can be read.
 
+    Mount implementations are not intended to be imported or instantiated
+    directly, but rather through the :meth:`pypogs.Receiver.factory` class
+    method.
+
     Args:
         identity (str, optional): String identifying the device and input. For
             *ni_daq* this is 'device/input' eg.  'Dev1/ai1' for device 'Dev1'

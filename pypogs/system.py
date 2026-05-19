@@ -836,7 +836,7 @@ class System:
         """Create and set a pypogs.Mount for System.mount. Arguments passed to constructor.
 
         Args:
-            model (str, optional): The model used to determine the the hardware control interface.
+            model (str, optional): The model used to determine the hardware control interface.
                 Supported: 'celestron' for Celestron NexStar and Orion/SkyWatcher SynScan (all the
                 same) hand controller communication over serial.
             identity (str or int, optional): String or int identifying the device. For model

@@ -23,6 +23,9 @@ class Camera(base.Hardware):
     event-driven acquisition, see Camera.add_event_callback(), where new images
     are automatically passed on to the desired functions.
 
+    Mount implementations are not intended to be imported or instantiated
+    directly, but rather through the :meth:`pypogs.Camera.factory` class method.
+
     Args:
         model (str, optional): The model used to determine the correct hardware
             API. Supported: 'ptgrey' for PointGrey/FLIR Machine Vision cameras
@@ -289,7 +292,6 @@ class Camera(base.Hardware):
             self._logger.warning('Could not remove callback', exc_info=True)
 
     @abc.abstractproperty
-    @property
     def is_running(self):
         """bool: True if device is currently acquiring data."""
         pass

@@ -13,30 +13,35 @@ class Hardware(abc.ABC):
     type = None # all hardware must use its own type (eg. 'mount', 'camera')
 
     @classmethod
-    def factory(cls, model):
+    def factory(cls, model:str):
         """Lookup the class type in available mount types and return a class.
 
-        Args:
-            model (str): The model used to determine the the hardware control
-                interface.
+        The model argument is used to specify which supported driver should be
+        loaded.
 
-                Supported :class:`pypogs.Mount` models:
-                    'Celestron' Celestron NexStar and Orion/SkyWatcher SynScan
-                                (all the same) hand controller communication
-                                over serial.
-                    'ASCOM'     ASCOM-enabled telescope mounts.
+        - Supported :class:`pypogs.Mount` models:
+            - 'Celestron' Celestron NexStar and Orion/SkyWatcher SynScan
+                        (all the same) hand controller communication
+                        over serial.
+            - 'ASCOM'     ASCOM-enabled telescope mounts.
 
-                    'iOptron AZMP' Serially connected iOptron AZMP mounts.
-                    'dummy'     Dummy (virtual) mount--mostly for debugging.
+            - 'iOptron AZMP' Serially connected iOptron AZMP mounts.
+            - 'INDI'      INDI-supported telescope mounts.
+            - 'dummy'     Dummy (virtual) mount--mostly for debugging.
 
-                Supported :class:`pypogs.Receiver` models:
-                    'ni_daq'    National Instruments DAQ cards (tested on
-                                USB-6211).
-                    'dummy'     Dummy (virtual) receiver--mostly for debugging.
+        - Supported :class:`pypogs.Receiver` models:
+            - 'ni_daq'    National Instruments DAQ cards (tested on
+                        USB-6211).
+            - 'dummy'     Dummy (virtual) receiver--mostly for debugging.
 
-                Supported :class:`pypogs.Camera` models:
-                    'ptgrey'    PointGrey/FLIR Machine Vision cameras (using
-                                Spinnaker and PySpin).
+        - Supported :class:`pypogs.Camera` models:
+            - 'ptgrey'    PointGrey/FLIR Machine Vision cameras (using
+                        Spinnaker and PySpin).
+            - 'zwoasi'    ZWO ASI cameras.
+            - 'INDI'      INDI-supported cameras.
+
+        :param model: The model used to determine the hardware control
+            interface.
         """
         return factory_module.factory(model, cls.type)
 
