@@ -2,7 +2,7 @@
 
 import abc, logging, time
 from pathlib import Path
-from threading import Thread, RLock
+from threading import Thread
 from math import copysign
 
 from .. import base
@@ -107,7 +107,6 @@ class Mount(base.Hardware):
         self._control_thread_stop = True
         # Cache of the state of the mount
         self._state_cache = self.EMPTY_STATE_CACHE.copy()
-        self.lock = RLock()
         super().__init__(*a, **kw)
 
     @property

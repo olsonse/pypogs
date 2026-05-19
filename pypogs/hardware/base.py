@@ -2,6 +2,7 @@
 
 import abc
 from pathlib import Path
+from threading import RLock
 import logging
 
 from . import factory as factory_module
@@ -53,6 +54,7 @@ class Hardware(abc.ABC):
         Abstract base class for all Hardware.  Some properties can be defined by
         keyword arguments to the constructor.
         """
+        self.lock = RLock() # useful for alleviating race conditions in drivers
         self._is_init = False
         self._thread_prepped = False
         self._identity = None

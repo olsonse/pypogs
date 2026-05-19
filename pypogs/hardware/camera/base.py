@@ -155,8 +155,9 @@ class Camera(base.Hardware):
 
         Returns None if not running.
         """
-        tavg = self._average_frame_time
-        return 1/tavg if tavg is not None else None
+        with self.lock:
+            tavg = self._average_frame_time
+            return 1/tavg if tavg is not None else None
 
     @property
     def binning(self):
@@ -268,12 +269,14 @@ class Camera(base.Hardware):
             method: The method to be called, with signature (image, timestamp, \*args, \*\*kwargs).
         """
         self._logger.debug('Adding to callbacks: ' + str(method))
-        self._call_on_image.add(method)
+        with self.lock:
+            self._call_on_image.add(method)
 
     def remove_event_callback(self, method):
         """Remove method from event callbacks."""
         try:
-            self._call_on_image.remove(method)
+            with self.lock:
+                self._call_on_image.remove(method)
         except:
             self._logger.warning('Could not remove callback', exc_info=True)
 
@@ -305,10 +308,11 @@ class Camera(base.Hardware):
             self._logger.info('Camera was not running, name: '+self.name)
             return
         self._do_stop()
-        self._image_data = None
-        self._image_timestamp = None
-        self._average_frame_time = None
-        self._got_image_event.clear()
+        with self.lock:
+            self._image_data = None
+            self._image_timestamp = None
+            self._average_frame_time = None
+            self._got_image_event.clear()
         self._logger.info('Acquisition stopped, name: '+self.name)
 
     @abc.abstractmethod
@@ -332,14 +336,16 @@ class Camera(base.Hardware):
             self.start()
             if not self._got_image_event.wait(timeout):
                 raise TimeoutError('Getting image timed out')
-            img = self._image_data
+            with self.lock:
+                img = self._image_data
             self.stop()
         else:
             self._logger.debug('Camera running, grab the first image to show up')
             self._got_image_event.clear()
             if not self._got_image_event.wait(timeout):
                 raise TimeoutError('Getting image timed out')
-            img = self._image_data
+            with self.lock:
+                img = self._image_data
         return img
 
     def get_new_image(self, timeout=10):
@@ -359,7 +365,8 @@ class Camera(base.Hardware):
             self.start()
             if not self._got_image_event.wait(timeout):
                 raise TimeoutError('Getting image timed out')
-            img = self._image_data
+            with self.lock:
+                img = self._image_data
             self.stop()
         else:
             self._logger.debug('Camera running, grab the second image to show up')
@@ -369,7 +376,8 @@ class Camera(base.Hardware):
             self._got_image_event.clear()
             if not self._got_image_event.wait(timeout/2):
                 raise TimeoutError('Getting image timed out')
-            img = self._image_data
+            with self.lock:
+                img = self._image_data
         return img
 
     def get_latest_image(self):
@@ -380,7 +388,8 @@ class Camera(base.Hardware):
         """
         #self._logger.debug('Got latest image request')
         assert self.is_running, 'Camera must be running'
-        return self._image_data
+        with self.lock:
+            return self._image_data
 
     def simple_image_processing(self, img, soft_ops={'flip_x', 'flip_y',
                                                      'rotate_90'}):
