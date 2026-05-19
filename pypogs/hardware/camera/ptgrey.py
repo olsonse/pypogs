@@ -2,8 +2,6 @@
 Implementation of a pointgrey/FLIR camera as supported by the Spinnaker library.
 """
 
-from datetime import datetime
-from time import perf_counter as precision_timestamp
 import numpy as np
 import PySpin
 
@@ -648,41 +646,16 @@ class PtGreyEventHandler(PySpin.ImageEventHandler):
         """
         self.parent._logger.debug(
           'Image event! Unpack and release pointer')
-        self.parent._image_timestamp = datetime.utcnow()
-        last_timestamp = self.parent._image_precision_timestamp
-        self.parent._image_precision_timestamp = precision_timestamp()
-
         try:
             # be sure to copy the data from Spinnaker to allow easier release
             img = img_ptr.GetData().reshape((img_ptr.GetHeight(),
                                              img_ptr.GetWidth())).copy()
             img = self.parent.simple_image_processing(img)
-            self.parent._image_data = img
         except:
             self.parent._logger.warning('Failed to unpack image', exc_info=True)
-            self.parent._image_data = None
+            img = None
         finally:
             img_ptr.Release()
-        self.parent._got_image_event.set()
-        self.parent._logger.debug('Time: %s Size:%s Type:%s',
-                                  self.parent._image_timestamp,
-                                  self.parent._image_data.shape,
-                                  self.parent._image_data.dtype)
-        for func in self.parent._call_on_image:
-            try:
-                #self.parent._logger.debug('Calling back to: %s', func)
-                func(self.parent._image_data, self.parent._image_timestamp)
-            except:
-                self.parent._logger.warning('Failed image callback',
-                                            exc_info=True)
-        self.parent._imgs_since_start += 1
-        if last_timestamp is not None:
-            new_frame_time = self.parent._image_precision_timestamp \
-                           - last_timestamp
-            if self.parent._average_frame_time is None:
-                self.parent._average_frame_time = new_frame_time
-            else:
-                self.parent._average_frame_time = \
-                  .8*self.parent._average_frame_time + .2*new_frame_time
 
+        self.parent.new_image_frame(img)
         self.parent._logger.debug('Event handler finished.')

@@ -3,7 +3,6 @@ Implementation of a camera with an ASCOM interface.
 """
 
 from threading import Thread
-from datetime import datetime
 from time import sleep
 import numpy as np
 
@@ -335,26 +334,10 @@ class AscomCameraImagingLoopHandler:
             try:
                 img = np.array(self.parent._ascom_camera.ImageArray, dtype=np.float).copy().T
                 img = self.parent.simple_image_processing(img)
-                self.parent._image_timestamp = datetime.utcnow()
-                self.parent._image_data = img
-                got_image = True
             except:
                 debug('Failed to access image.')
-                self.parent._image_data = None
+                img = None
 
-            # Signal image ready and run callbacks:
-            if got_image:
-                self.parent._got_image_event.set()
-                debug('Time: %s Size:%s Type:%s', self.parent._image_timestamp,
-                                                  self.parent._image_data.shape,
-                                                  self.parent._image_data.dtype)
-                for func in self.parent._call_on_image:
-                    try:
-                        #debug('Calling back to: ' + str(func))
-                        func(self.parent._image_data, self.parent._image_timestamp)
-                    except:
-                        self.parent._logger.warning('Failed image callback', exc_info=True)
-                self.parent._imgs_since_start += 1
-
+            self.parent.new_image_frame(img)
             sleep(0.001)
         debug('Event handler finished.')

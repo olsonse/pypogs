@@ -4,8 +4,6 @@ Implementation of a ZWO ASI camera.
 
 from pathlib import Path
 from threading import Thread
-from datetime import datetime
-from time import perf_counter as precision_timestamp
 import numpy as np
 import zwoasi
 
@@ -412,9 +410,6 @@ class ZwoAsiImageHandler:
         while not self._stop_running:
             try:
                 img = cam.capture_video_frame(timeout = timeout_ms)
-                self.parent._image_timestamp = datetime.utcnow()
-                last_timestamp = self.parent._image_precision_timestamp
-                self.parent._image_precision_timestamp = precision_timestamp()
             except zwoasi.ZWO_IOError as e:
                 if str(zwoasi.ZWO_IOError) == 'Camera closed':
                     debug('zwoasi Camera closed, probably deinitialising')
@@ -433,27 +428,6 @@ class ZwoAsiImageHandler:
               soft_ops=['rotate_90', 'debayer', 'grb_to_rgb'],
               color_pattern=self.ZWOASI_BAYER[bayer_mode])
 
-            self.parent._image_data = img
-
-            self.parent._got_image_event.set()
-            debug('Time: %s Size:%s Type:%s', self.parent._image_timestamp,
-                                              self.parent._image_data.shape,
-                                              self.parent._image_data.dtype)
-            for func in self.parent._call_on_image:
-                try:
-                    #debug('Calling back to: ' + str(func))
-                    func(self.parent._image_data, self.parent._image_timestamp)
-                except:
-                    self.log.warning('Failed image callback', exc_info=True)
-
-            self.parent._imgs_since_start += 1
-            if last_timestamp is not None:
-                new_frame_time = self.parent._image_precision_timestamp \
-                               - last_timestamp
-                if self.parent._average_frame_time is None:
-                    self.parent._average_frame_time = new_frame_time
-                else:
-                    self.parent._average_frame_time = \
-                      .8*self.parent._average_frame_time + .2*new_frame_time
+            self.parent.new_image_frame(img)
 
         debug('Event handler finished.')

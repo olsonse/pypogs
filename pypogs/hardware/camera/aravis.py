@@ -2,8 +2,6 @@
 Implementation of a pointgrey/FLIR camera as supported by the Spinnaker library.
 """
 
-from datetime import datetime
-from time import perf_counter as precision_timestamp
 import numpy as np
 from functools import cached_property
 
@@ -360,47 +358,17 @@ class Camera(base.Camera):
             img_data = buf.get_data()
             if len(img_data) == 0:
                 self._logger.warning('Empty buffer received from stream!')
-                self._image_data = None
-                return
-
-            img = np.frombuffer(img_data, dtype=dtype) \
-                .reshape(self.region.height, self.region.width).copy()
-            img = self.simple_image_processing(img)
-
-            self._logger.debug('Image event!')
-            self._image_timestamp = datetime.utcnow()
-            self._image_data = img
+                img = None
+            else:
+                img = np.frombuffer(img_data, dtype=dtype) \
+                    .reshape(self.region.height, self.region.width).copy()
+                img = self.simple_image_processing(img)
 
         except:
             self._logger.warning('Failed to unpack image', exc_info=True)
-            self._image_data = None
-            return
+            img = None
         finally:
             # be sure to add the buffer back to the stream for new frames
             self.stream.push_buffer(buf)
 
-        last_timestamp = self._image_precision_timestamp
-        self._image_precision_timestamp = precision_timestamp()
-        self._imgs_since_start += 1
-
-        self._got_image_event.set()
-        self._logger.debug('Time: %s Size:%s Type:%s',
-                                  self._image_timestamp,
-                                  self._image_data.shape,
-                                  self._image_data.dtype)
-        for func in self._call_on_image:
-            try:
-                #self._logger.debug('Calling back to: %s', func)
-                func(self._image_data, self._image_timestamp)
-            except:
-                self._logger.warning('Failed image callback', exc_info=True)
-        if last_timestamp is not None:
-            new_frame_time = self._image_precision_timestamp - last_timestamp
-            if self._average_frame_time is None:
-                self._average_frame_time = new_frame_time
-            else:
-                # computing a simple exponential average
-                self._average_frame_time = \
-                  .8*self._average_frame_time + .2*new_frame_time
-
-        self._logger.debug('Image read callback finished.')
+        self.new_image_frame(img)

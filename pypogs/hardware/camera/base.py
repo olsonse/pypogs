@@ -2,6 +2,8 @@
 
 import abc
 from threading import Event
+from datetime import datetime, UTC
+from time import perf_counter as precision_timestamp
 
 from .. import base
 from .. import factory as factory_module
@@ -400,6 +402,48 @@ class Camera(base.Hardware):
         if 'rotate_90' in soft_ops and self.rotate_90:
             img = np.rot90(img, self.rotate_90)
         return img
+
+    def new_image_frame(self, img):
+        """Called by camera implementations in their acquisition thread to
+        make new camera frames available.
+
+        This function also computes an average frame rate to be returned by the
+        readonly frame_rate_actual property.
+        """
+        if img is None:
+            return
+        with self.lock:
+            self._image_data = img
+            img_ts = self._image_timestamp = datetime.now(UTC)
+            last_pts = self._image_precision_timestamp
+            self._image_precision_timestamp = precision_timestamp()
+            self._imgs_since_start += 1
+
+            if last_pts is not None:
+                new_frame_time = self._image_precision_timestamp - last_pts
+                if self._average_frame_time is None:
+                    self._average_frame_time = new_frame_time
+                else:
+                    # computing a simple exponential average
+                    self._average_frame_time = \
+                      .8*self._average_frame_time + .2*new_frame_time
+
+            # copy current set of callbacks for handling below
+            callbacks = self._call_on_image.copy()
+
+        self._logger.debug('Image event!')
+        self._got_image_event.set()
+        self._logger.debug('Time: %s Size:%s Type:%s',
+                           img_ts, img.shape, img.dtype)
+
+        # Signal image ready and run callbacks:
+        for func in callbacks:
+            try:
+                #self._logger.debug('Calling back to: %s', func)
+                func(img, img_ts)
+            except:
+                self._logger.warning('Failed image callback "%s"', func,
+                                     exc_info=True)
 
 
 class ColorCapableCamera(Camera):
