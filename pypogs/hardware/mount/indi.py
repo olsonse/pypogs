@@ -53,8 +53,6 @@ class Mount(base.Mount, indi_base.Hardware):
 
     available_properties = base.Mount.available_properties + ('location',)
 
-    MAX_ENUMERATION_WAIT = 10 # maximum wait (in seconds) for device updates
-
     CACHED_PROPERTIES = indi_base.Hardware.CACHED_PROPERTIES + [
       'known_tracking_modes', 'mount_type', 'has_custom_track_rate',
     ]

@@ -63,12 +63,33 @@ class Hardware(base.Hardware, abc.ABC, PyIndi.BaseClient):
         """
         pass
 
-    def open_device(self, identity):
+    def serverConnected(self):
+        """PyIndi.BaseClient callback on server connections"""
+        self._logger.info('Connected to indi server: %s:%d',
+                          self.getHost(), self.getPort())
+
+    def serverDisconnected(self, code):
+        """PyIndi.BaseClient callback on server disconnections"""
+        self._logger.info('Disconnected from indi server: %s:%d; clear device.',
+                          self.getHost(), self.getPort())
+        del self.device
+        self.device = None
+        self.free_cached_properties() # reset cached device name
+
+    def newDevice(self, device):
+        """PyIndi.BaseClient callback on new device enumerations"""
+        if device.getDeviceName() == self.device_name:
+            self.device = device
+        self.free_cached_properties()
+
+    def open_device(self, identity = None):
         """
         Open connection to server and test if this is a telescope mount.
 
         Returns SWIG proxy/handle to telescope device.
         """
+        old_identity = self.identity
+        identity = identity if identity else self.identity
         parsed = self.parse_identity(identity)
         if not parsed:
             raise ValueError(f'INDI:  invalid INDI mount "{identity}"; '
@@ -76,30 +97,30 @@ class Hardware(base.Hardware, abc.ABC, PyIndi.BaseClient):
         host, port, device = parsed
 
         self.setServer(host, int(port))
-        if not self.connectServer():
-            return None
         try:
+            self._identity = identity
+            if not self.connectServer():
+                return False
+
             tf = time.time() + self.MAX_ENUMERATION_WAIT
-            D = None
-            while not D and time.time() <= tf:
+            while (not self.device) and time.time() <= tf:
                 time.sleep(0.1)
-                D = self.getDevice(device)
-            good = (bool(D) and
-                    ((D.getDriverInterface() & self.REQUIRED_INTERFACE)
+            good = (bool(self.device) and
+                ((self.device.getDriverInterface() & self.REQUIRED_INTERFACE)
                      == self.REQUIRED_INTERFACE)
             )
             # TODO: implement more checks to see if the device has enough
             # capability for pypogs
-            return D if good else None
+            return good
         except:
+            self._identity = old_identity
             self.setServer(old_host, old_port)
 
     def close(self):
-        del self.device
-        self.device = None
         self.disconnectServer()
 
     def free_cached_properties(self):
+        """Automatically called on new connetions and disconnections"""
         # clear all
         for attr in self.CACHED_PROPERTIES:
             try: delattr(self, attr)
@@ -112,8 +133,6 @@ class Hardware(base.Hardware, abc.ABC, PyIndi.BaseClient):
                   f'INDI:  Could not connect to INDI mount "{identity}"; ')
         finally:
             self.close()
-        self._identity = identity
-        self.free_cached_properties() # reset cached device name
 
     def parse_identity(self, identity):
         if not identity:
@@ -161,13 +180,8 @@ class Hardware(base.Hardware, abc.ABC, PyIndi.BaseClient):
     def _initialize(self):
         self.watchDevice(self.device_name)
 
-        self.device = self.open_device(self.identity)
-        if not self.device:
+        if not self.open_device():
             self.close()
             raise RuntimeError(f'Could not open INDI device: "{self.identity}"')
 
-        self.free_cached_properties()
-
-    def _deinitialize(self):
-        self.close()
-        self.free_cached_properties()
+    _deinitialize = close
