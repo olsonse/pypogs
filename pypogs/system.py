@@ -2013,12 +2013,27 @@ class Target:
         """Create an Astropy *SkyCoord* and set as the target.
 
         Args:
-            ra (float): Right ascension in decimal degrees.
-            dec (float): Declination in decimal degrees.
+            ra (float or astropy.units.Quantity): Right ascension in hourangle.
+            dec (float or astropy.units.Quantity): Declination in degrees.
             start_time (astropy *Time*, optional): The start time to set.
             end_time (astropy *Time*, optional): The end time to set.
         """
-        self.target_object = apy_coord.SkyCoord(ra, dec, unit='deg')
+        if isinstance(ra, apy_unit.Quantity):
+            assert apy_unit.degree.is_equivalent(ra), 'RA with wrong units'
+        else:
+            assert isinstance(ra, numbers.Number), \
+              'RA must be either a number (with implied hourangle units) or ' \
+              'an explicit astropy.units.Quantity with units of angle'
+            ra = ra * apy_unit.deg
+        if isinstance(dec, apy_unit.Quantity):
+            assert apy_unit.degree.is_equivalent(dec), 'DEC with wrong units'
+        else:
+            assert isinstance(dec, numbers.Number), \
+              'DEC must be either a number (with implied degree units) or ' \
+              'an explicit astropy.units.Quantity with units of angle'
+            dec = dec * apy_unit.deg
+
+        self.target_object = apy_coord.SkyCoord(ra, dec)
         self.set_start_end_time(start_time, end_time)
         
     def get_tle_from_sat_id(self, sat_id):
@@ -2154,8 +2169,12 @@ class Target:
         elif isinstance(self._target, sgp4.EarthSatellite):
             return 'Source: TLE #' + str(self._target.model.satnum)
         elif isinstance(self._target, apy_coord.SkyCoord):
-            return 'Source: RA:' + str(round(self._target.ra.to_value('deg'), 2)) + DEG \
-                   + ' D:' + str(round(self._target.dec.to_value('deg'), 2)) + DEG
+            ra = self._target.ra.to_string(unit=apy_unit.hourangle, sep=':',
+                                           precision=2, pad=True)
+            dec = self._target.dec.to_string(unit=apy_unit.deg, sep=':',
+                                             precision=2, pad=True)
+
+            return f'Source: RA:{ra} D:{dec}'
         elif isinstance(self._target, Ephem):
             return 'Source: ephem obj #' + str(self._ephem.obj_id)
 

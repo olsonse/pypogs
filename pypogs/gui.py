@@ -26,7 +26,8 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import filedialog
 from astropy.time import Time as apy_time
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, Angle
+from astropy import units as apy_unit
 from skyfield.sgp4lib import EarthSatellite
 from ast import literal_eval as parse_expression
 from PIL import Image, ImageTk
@@ -1471,7 +1472,7 @@ class TargetFrame(ttk.Frame):
         try:
             itrf_xyz = self.sys.get_itrf_direction_of_target()
             enu_altaz = self.sys.alignment.get_enu_altaz_from_itrf_xyz(itrf_xyz)
-            altaz_string = 'Alt:' + str(round(enu_altaz[0],1)) + DEG + ' Az:' + str(round(enu_altaz[1],1)) + DEG
+            altaz_string = f'Alt:{enu_altaz[0]:.2f}{DEG} Az:{enu_altaz[1]:.2f}{DEG}'
         except AssertionError:
             altaz_string = ''
         self.status_label['text'] = target_string + '\n' + start_string + '\n' + end_string + '\n' + altaz_string
@@ -1578,11 +1579,11 @@ class TargetFrame(ttk.Frame):
             # RA/Dec Input:
             radec_frame = ttk.Frame(self)
             radec_frame.grid(row=5, column=0, columnspan=3, padx=(10,0), pady=10)
-            ttk.Label(radec_frame, text='Set from RA/Dec:').grid(row=0, column=0, columnspan=2)
-            ttk.Label(radec_frame, text='RA: (deg)').grid(row=1, column=0, sticky=tk.E)
+            ttk.Label(radec_frame, text='Set from ICRS (J2000) RA/Dec:').grid(row=0, column=0, columnspan=2)
+            ttk.Label(radec_frame, text='RA: (hms or hour)').grid(row=1, column=0, sticky=tk.E)
             self.ra_entry = ttk.Entry(radec_frame, width=25, font='TkFixedFont')
             self.ra_entry.grid(row=1, column=1)
-            ttk.Label(radec_frame, text='Dec: (deg)').grid(row=2, column=0, sticky=tk.E)
+            ttk.Label(radec_frame, text='Dec: (dms or deg)').grid(row=2, column=0, sticky=tk.E)
             self.dec_entry = ttk.Entry(radec_frame, width=25, font='TkFixedFont')
             self.dec_entry.grid(row=2, column=1)
             ttk.Button(radec_frame, text='Set', command=self.set_radec_callback) \
@@ -1633,10 +1634,12 @@ class TargetFrame(ttk.Frame):
             self.dec_entry.delete(0, 'end')
             # Fill with current
             if isinstance(target, SkyCoord):
-                ra = target.ra.to_value('deg')
-                dec = target.dec.to_value('deg')
-                self.ra_entry.insert(0, str(ra))
-                self.dec_entry.insert(0, str(dec))
+                ra = target.ra.to_string(unit=apy_unit.hourangle, sep='hms',
+                                         precision=2, pad=True)
+                dec = target.dec.to_string(unit=apy_unit.deg, sep='dms',
+                                           precision=2, pad=True)
+                self.ra_entry.insert(0, ra)
+                self.dec_entry.insert(0, dec)
             elif isinstance(target, EarthSatellite):
                 (l1, l2) = self.master.sys.target.get_tle_raw()
                 self.tle_line1_entry.insert(0, l1)
@@ -1721,6 +1724,8 @@ class TargetFrame(ttk.Frame):
             try:
                 ra = self.ra_entry.get()
                 dec = self.dec_entry.get()
+                ra = Angle(ra, unit=apy_unit.hourangle)
+                dec = Angle(dec, unit=apy_unit.deg)
                 self.master.sys.target.set_target_from_ra_dec(ra, dec)
                 self.clear_time_callback()
                 #self.update() called in clear_time_callback()
