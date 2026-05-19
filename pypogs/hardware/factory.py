@@ -29,6 +29,7 @@ available = dict(
     'ptgrey'        : 'camera.spinnaker.Camera',
     'zwoasi'        : 'camera.zwoasi.Camera',
     'ascom'         : 'camera.ascom.Camera',
+    'INDI'          : 'camera.indi.Camera',
     'aravis'        : 'camera.aravis.Camera',
   },
 
